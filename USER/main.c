@@ -30,7 +30,7 @@ void start_task(void *pdata);
  			   
 //心跳包任务
 //设置任务优先级
-#define HEART_TASK_PRIO       			6 
+#define HEART_TASK_PRIO       			7 
 //设置任务堆栈大小
 #define HEART_STK_SIZE  		    		64
 //任务堆栈	
@@ -40,7 +40,7 @@ void heart_task(void *pdata);
 
 //接收信息分析任务
 //设置任务优先级
-#define ANALYZE_TASK_PRIO       		 	3
+#define ANALYZE_TASK_PRIO       		 	6
 //设置任务堆栈大小
 #define ANALYZE_STK_SIZE  				128
 //任务堆栈	
@@ -70,7 +70,7 @@ void key_task(void *pdata);
 
 //WIFI状态判断任务
 //设置任务优先级
-#define WIFI_TASK_PRIO       			7 
+#define WIFI_TASK_PRIO       			3 
 //设置任务堆栈大小
 #define WIFI_STK_SIZE  					64
 //任务堆栈	
@@ -192,10 +192,10 @@ void heart_task(void *pdata)
 			USART_SendData(USART3, RxBuffer[i]);
 			while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 		}
-			delay_ms(1000);
+			delay_ms(200);
 			
 			//信号量收到心跳包？
-			OSSemPend(sem_heart,4000,&err);			
+			OSSemPend(sem_heart,500,&err);			
 			
 			//没收到心跳包
 			if(err==OS_ERR_TIMEOUT)
@@ -215,10 +215,10 @@ void heart_task(void *pdata)
 			{
 				if(wifistate == WAITSERVER)
 					wifistate = TRANS;
-				delay_ms(10000);
+				delay_ms(2000);
 			}
 		}
-		delay_ms(2000);
+		delay_ms(500);
 	}
 }
 
@@ -244,7 +244,7 @@ void wifi_task(void *pdata)
 		else
 		{
 			LED0=1;
-			delay_ms(2000);
+			delay_ms(1000);
 		}
 	}
 }
@@ -276,10 +276,7 @@ void analyze_task(void *pdata)
 			OSMboxPost(msg_light, msg);
 		delay_ms(200);
 	}
-} 
-
-
-
+}
 
 
 
