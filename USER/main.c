@@ -87,7 +87,7 @@ void start_task(void *pdata)
 	sem_heart=OSSemCreate(0);		//¥¥Ω®–≈∫=	 			  
 	OSStatInit();					//≥ı ºªØÕ≥º∆»ŒŒÒ.’‚¿Ôª·—” ±1√Î÷”◊Û”“	
  	OS_ENTER_CRITICAL();			//Ω¯»Î¡ŸΩÁ«¯(Œﬁ∑®±ª÷–∂œ¥Ú∂œ)    
- 	//OSTaskCreate(heart_task,(void *)0,(OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE-1],HEART_TASK_PRIO);	 				   
+ 	OSTaskCreate(heart_task,(void *)0,(OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE-1],HEART_TASK_PRIO);	 				   
  	OSTaskCreate(led_task,(void *)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO);						   
  	OSTaskCreate(analyze_task,(void *)0,(OS_STK*)&ANALYZE_TASK_STK[ANALYZE_STK_SIZE-1],ANALYZE_TASK_PRIO);	 				   		   				   
  	OSTaskSuspend(START_TASK_PRIO);	//π“∆∆ º»ŒŒÒ.

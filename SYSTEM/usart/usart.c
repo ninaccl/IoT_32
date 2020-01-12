@@ -147,6 +147,7 @@ void USART3_IRQHandler(void)                	//串口3中断服务程序
 				if(Res!=0x0a)USART_RX_STA=0;//接收错误,重新开始
 				else 
 					{
+					USART_RX_BUF[USART_RX_STA&0X3FFF] = 0;
 					USART_RX_STA=0;	//接收完成了 
 					//发送信息到邮箱
 					OSMboxPost(msg_instruction, &USART_RX_BUF);
