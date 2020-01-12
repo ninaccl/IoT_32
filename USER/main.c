@@ -30,7 +30,7 @@ void start_task(void *pdata);
  			   
 //心跳包任务
 //设置任务优先级
-#define HEART_TASK_PRIO       			4 
+#define HEART_TASK_PRIO       			6 
 //设置任务堆栈大小
 #define HEART_STK_SIZE  		    		64
 //任务堆栈	
@@ -50,7 +50,7 @@ void analyze_task(void *pdata);
 
 //LED任务
 //设置任务优先级
-#define LED_TASK_PRIO       			6 
+#define LED_TASK_PRIO       			4 
 //设置任务堆栈大小
 #define LED_STK_SIZE  					64
 //任务堆栈	
@@ -67,6 +67,17 @@ void led_task(void *pdata);
 OS_STK KEY_TASK_STK[KEY_STK_SIZE];
 //任务函数
 void key_task(void *pdata);
+
+//WIFI状态判断任务
+//设置任务优先级
+#define WIFI_TASK_PRIO       			7 
+//设置任务堆栈大小
+#define WIFI_STK_SIZE  					64
+//任务堆栈	
+OS_STK WIFI_TASK_STK[WIFI_STK_SIZE];
+//任务函数
+void wifi_task(void *pdata);
+
  
 //////////////////////////////////////////////////////////////////////////////
 //OS_EVENT * msg_instruction;			//指令邮箱事件块指针
@@ -101,8 +112,9 @@ void start_task(void *pdata)
  	OSTaskCreate(heart_task,(void *)0,(OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE-1],HEART_TASK_PRIO);	 				   
  	OSTaskCreate(led_task,(void *)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO);			
 	OSTaskCreate(key_task,(void *)0,(OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE-1],KEY_TASK_PRIO);
+	OSTaskCreate(wifi_task,(void *)0,(OS_STK*)&WIFI_TASK_STK[WIFI_STK_SIZE-1],WIFI_TASK_PRIO);	
  	OSTaskCreate(analyze_task,(void *)0,(OS_STK*)&ANALYZE_TASK_STK[ANALYZE_STK_SIZE-1],ANALYZE_TASK_PRIO);	 	
- 	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务.
+ 	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务
 	OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
 }	  
 //LED任务
@@ -120,7 +132,6 @@ void led_task(void *pdata)
 	if(strcmp(msg,"light")==0)
 	{
 		//LIGHT???
-		LED0=!LED0;
 		LED1=!LED1;
 		//串口发送okay
 		//RxBuffer[0]='o';
@@ -137,6 +148,7 @@ void led_task(void *pdata)
 	}									 
 }	   
 
+//Key任务
 void key_task(void *pdata)
 {
 	u8 key = 0;
@@ -210,6 +222,32 @@ void heart_task(void *pdata)
 	}
 }
 
+//wifi状态判断任务
+void wifi_task(void *pdata)
+{
+	while(1)
+	{
+		if(wifistate == WAITAP)
+		{
+			LED0=0;
+			delay_ms(800);
+			LED0=1;
+			delay_ms(200);
+		}
+		else if(wifistate == WAITSERVER)
+		{
+			LED0=0;
+			delay_ms(500);
+			LED0=1;
+			delay_ms(500);
+		}
+		else
+		{
+			LED0=1;
+			delay_ms(2000);
+		}
+	}
+}
 
 
 
@@ -226,9 +264,9 @@ void analyze_task(void *pdata)
 			//TODO
 			//AP相关信息？
 		if(strcmp(msg, "WIFI CONNECTED")==0)
-			wifistate = WAITAP;
+			wifistate = WAITSERVER;
 		else if(strcmp(msg, "WIFI DISCONNECT")==0)
-			wifistate = TRANS;
+			wifistate = WAITAP;
 		//是心跳包？
 		else if(strcmp(msg, "ping")==0)
 			//发送信号量
