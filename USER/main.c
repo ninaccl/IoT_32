@@ -48,7 +48,7 @@ OS_STK ANALYZE_TASK_STK[ANALYZE_STK_SIZE];
 //ÈÎÎñº¯Êı
 void analyze_task(void *pdata);
 
-//Ö¸ÁîÅĞ¶ÏºÍÖ´ĞĞ
+//LEDÈÎÎñ
 //ÉèÖÃÈÎÎñÓÅÏÈ¼¶
 #define LED_TASK_PRIO       			6 
 //ÉèÖÃÈÎÎñ¶ÑÕ»´óĞ¡
@@ -57,12 +57,22 @@ void analyze_task(void *pdata);
 OS_STK LED_TASK_STK[LED_STK_SIZE];
 //ÈÎÎñº¯Êı
 void led_task(void *pdata);
+
+//KEYÈÎÎñ
+//ÉèÖÃÈÎÎñÓÅÏÈ¼¶
+#define KEY_TASK_PRIO       			5 
+//ÉèÖÃÈÎÎñ¶ÑÕ»´óĞ¡
+#define KEY_STK_SIZE  					64
+//ÈÎÎñ¶ÑÕ»	
+OS_STK KEY_TASK_STK[KEY_STK_SIZE];
+//ÈÎÎñº¯Êı
+void key_task(void *pdata);
  
 //////////////////////////////////////////////////////////////////////////////
 //OS_EVENT * msg_instruction;			//Ö¸ÁîÓÊÏäÊÂ¼ş¿éÖ¸Õë
 OS_EVENT * msg_light;	//Ö¸ÁîµÆÊÂ¼ş¿éÖ¸Õë
 OS_EVENT * sem_heart;		//ĞÄÌø°üĞÅºÅÁ¿Ö¸Õë	 
-enum USART_STATE{TRANS,WAITSERVER,WAITAP}usartstate;	//WIFI×´Ì¬
+enum WIFI_STATE{TRANS,WAITSERVER,WAITAP}wifistate;	//WIFI×´Ì¬
 
  int main(void)
  {	 		    
@@ -70,6 +80,7 @@ enum USART_STATE{TRANS,WAITSERVER,WAITAP}usartstate;	//WIFI×´Ì¬
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//ÉèÖÃÖĞ¶ÏÓÅÏÈ¼¶·Ö×éÎª×é2£º2Î»ÇÀÕ¼ÓÅÏÈ¼¶£¬2Î»ÏìÓ¦ÓÅÏÈ¼¶
 	usart_init(115200);	 	//´®¿Ú³õÊ¼»¯Îª115200	 
 	LED_Init();		  		//³õÊ¼»¯ÓëLEDÁ¬½ÓµÄÓ²¼ş½Ó¿Ú
+	KEY_Init();          //³õÊ¼»¯Óë°´¼üÁ¬½ÓµÄÓ²¼ş½Ó¿Ú
   OSInit();  	 			//³õÊ¼»¯UCOSII
   OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//´´½¨ÆğÊ¼ÈÎÎñ
 	OSStart();
@@ -81,15 +92,16 @@ void start_task(void *pdata)
 {
   OS_CPU_SR cpu_sr=0;
 	pdata = pdata; 
-	usartstate = TRANS;
+	wifistate = TRANS;
 	msg_instruction=OSMboxCreate((void*)0);	//´´½¨ÏûÏ¢ÓÊÏä
 	msg_light=OSMboxCreate((void*)0);	//´´½¨ÏûÏ¢ÓÊÏä
-	sem_heart=OSSemCreate(0);		//´´½¨ĞÅº=	 			  
+	sem_heart=OSSemCreate(0);		//´´½¨ĞÅºÅÁ¿ 			  
 	OSStatInit();					//³õÊ¼»¯Í³¼ÆÈÎÎñ.ÕâÀï»áÑÓÊ±1ÃëÖÓ×óÓÒ	
  	OS_ENTER_CRITICAL();			//½øÈëÁÙ½çÇø(ÎŞ·¨±»ÖĞ¶Ï´ò¶Ï)    
  	OSTaskCreate(heart_task,(void *)0,(OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE-1],HEART_TASK_PRIO);	 				   
- 	OSTaskCreate(led_task,(void *)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO);						   
- 	OSTaskCreate(analyze_task,(void *)0,(OS_STK*)&ANALYZE_TASK_STK[ANALYZE_STK_SIZE-1],ANALYZE_TASK_PRIO);	 				   		   				   
+ 	OSTaskCreate(led_task,(void *)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO);			
+	OSTaskCreate(key_task,(void *)0,(OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE-1],KEY_TASK_PRIO);
+ 	OSTaskCreate(analyze_task,(void *)0,(OS_STK*)&ANALYZE_TASK_STK[ANALYZE_STK_SIZE-1],ANALYZE_TASK_PRIO);	 	
  	OSTaskSuspend(START_TASK_PRIO);	//¹ÒÆğÆğÊ¼ÈÎÎñ.
 	OS_EXIT_CRITICAL();				//ÍË³öÁÙ½çÇø(¿ÉÒÔ±»ÖĞ¶Ï´ò¶Ï)
 }	  
@@ -125,6 +137,28 @@ void led_task(void *pdata)
 	}									 
 }	   
 
+void key_task(void *pdata)
+{
+	u8 key = 0;
+	static u8 RxBuffer[]="press key";
+	int i;
+	while(1)
+	{
+		key=KEY_Scan(0);	//µÃµ½¼üÖµ
+		if(key)			//·¢ËÍÏûÏ¢
+		{
+			for(i= 0;i < 9; i++)
+			{
+				USART_SendData(USART3, RxBuffer[i]);
+				while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+			}
+			delay_ms(200);
+		}
+
+		delay_ms(20);
+	}
+}
+
 //ĞÄÌø°üÈÎÎñ
 void heart_task(void *pdata)
 {
@@ -134,7 +168,7 @@ void heart_task(void *pdata)
 	u8 i;
 	while(1)
 	{
-		if(usartstate != WAITAP)
+		if(wifistate != WAITAP)
 		{
 			//·¢ËÍĞÄÌø°ü
 		RxBuffer[0]='p';
@@ -154,12 +188,12 @@ void heart_task(void *pdata)
 			//Ã»ÊÕµ½ĞÄÌø°ü
 			if(err==OS_ERR_TIMEOUT)
 			{
-				if(usartstate == TRANS)
+				if(wifistate == TRANS)
 				{
 					lossmsg++;
 					if(lossmsg==3)					
 					{
-						usartstate = WAITSERVER;
+						wifistate = WAITSERVER;
 						lossmsg = 0;
 					}		
 				}
@@ -167,14 +201,16 @@ void heart_task(void *pdata)
 			//ÊÕµ½ĞÄÌø°ü
 			else
 			{
-				if(usartstate == WAITSERVER)
-					usartstate = TRANS;
+				if(wifistate == WAITSERVER)
+					wifistate = TRANS;
 				delay_ms(10000);
 			}
 		}
 		delay_ms(2000);
 	}
 }
+
+
 
 
 //Ö¸Áî·ÖÎöÈÎÎñ
@@ -190,9 +226,9 @@ void analyze_task(void *pdata)
 			//TODO
 			//APÏà¹ØĞÅÏ¢£¿
 		if(strcmp(msg, "WIFI CONNECTED")==0)
-			usartstate = WAITAP;
+			wifistate = WAITAP;
 		else if(strcmp(msg, "WIFI DISCONNECT")==0)
-			usartstate = TRANS;
+			wifistate = TRANS;
 		//ÊÇĞÄÌø°ü£¿
 		else if(strcmp(msg, "ping")==0)
 			//·¢ËÍĞÅºÅÁ¿
